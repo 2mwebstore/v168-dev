@@ -114,21 +114,24 @@ const pageUrl = computed(() => {
 | OG Image
 |--------------------------------------------------------------------------
 |
-| thumbnail_link from the API is the share image. When a fight has no
-| thumbnail we still must emit an og:image — a page with no og:image at
-| all is exactly the "shared but no picture" case on Facebook/Telegram,
-| so the site logo is used as the last resort.
+| The share image is served by our own /og/fight/:id.jpg route
+| (server/routes/og/fight/[id].get.ts), which fetches the fight's
+| thumbnail_link server-side and resizes it to a 1200x630 JPEG.
+|
+| Pointing og:image straight at thumbnail_link did not work reliably:
+| those are admin-pasted, often multi-megabyte screenshots that Telegram
+| (~5 MB limit) and Facebook/Messenger (8 MB limit, slow-fetch timeout)
+| silently drop. The proxied JPEG is always small, https, on our domain,
+| and has a .jpg extension — which is what the crawlers want.
+|
+| If the fight has no thumbnail (or it can't be fetched) the route
+| redirects to /v168.png so a picture is still shown.
 |
 */
-const OG_FALLBACK_IMAGE = '/v168.png'
-
 const ogImage = computed(() => {
-  return toAbsoluteImageUrl(
-    fight.value?.thumbnail_link,
-    origin,
-    `${origin}${OG_FALLBACK_IMAGE}`
-  )
+  return `${origin}/og/fight/${encodeURIComponent(id.value)}.jpg`
 })
+
 /*
 |--------------------------------------------------------------------------
 | SEO description

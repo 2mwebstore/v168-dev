@@ -53,7 +53,7 @@ useSeoMeta({
   description: () => `${fightTitle.value} — V168 cockfight result, Meron vs Wala.`,
   ogTitle: () => fightTitle.value,
   ogDescription: () => `${fightTitle.value} — V168 cockfight result, Meron vs Wala.`,
-  ogImage: () => fight.value?.thumbnail_link || `${requestUrl.origin}/v168.png`,
+  ogImage: () => toAbsoluteImageUrl(fight.value?.thumbnail_link, requestUrl.origin, `${requestUrl.origin}/v168.png`),
   ogType: 'website',
   ogUrl: () => pageUrl.value,
   twitterCard: 'summary_large_image',

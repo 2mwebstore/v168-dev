@@ -43,3 +43,21 @@ export function timeAgo(str?: string | null): string {
   const years = Math.floor(days / 365)
   return `${years}y ago`
 }
+
+// Facebook's crawler requires og:image (and twitter:image) to be a fully
+// qualified, absolute URL — it will not resolve a relative path against
+// the page it's scraping. Admin-entered image links (video `photo`,
+// fight `thumbnail_link`) are free-text fields, so there's no guarantee
+// they were saved as absolute URLs. This normalizes whatever comes back
+// from the API into something Facebook can actually fetch:
+//   - already absolute (http/https) → used as-is
+//   - protocol-relative ("//cdn...") → given the current scheme
+//   - site-relative ("/uploads/x.jpg") → prefixed with the request origin
+//   - empty/missing → falls back to the provided default
+export function toAbsoluteImageUrl(path: string | null | undefined, origin: string, fallback: string): string {
+  const value = path?.trim()
+  if (!value) return fallback
+  if (/^https?:\/\//i.test(value)) return value
+  if (value.startsWith('//')) return `https:${value}`
+  return `${origin}${value.startsWith('/') ? '' : '/'}${value}`
+}

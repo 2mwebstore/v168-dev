@@ -42,7 +42,7 @@ useSeoMeta({
   description: () => video.value?.detail || 'Watch this V168 fight video.',
   ogTitle: () => video.value?.title || 'V168 — Video',
   ogDescription: () => video.value?.detail || 'Watch this V168 fight video.',
-  ogImage: () => video.value?.photo || `${requestUrl.origin}/v168.png`,
+  ogImage: () => toAbsoluteImageUrl(video.value?.photo, requestUrl.origin, `${requestUrl.origin}/v168.png`),
   ogType: 'video.other',
   ogUrl: () => pageUrl.value,
   twitterCard: 'summary_large_image',

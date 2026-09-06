@@ -1,7 +1,7 @@
 <script setup lang="ts">
 const route = useRoute()
 const config = useRuntimeConfig()
-const requestUrl = useRequestURL()
+const origin = useSiteOrigin()
 const { t } = useLang()
 
 const DEFAULT_LEFT_IMAGE = '/images/left.png'
@@ -40,7 +40,10 @@ const {
       FightDetail[] |
       { data: FightDetail }
     >(
-      `${config.public.apiBase}/fight/${encodeURIComponent(id.value)}`
+      `${config.public.apiBase}/fight/${encodeURIComponent(id.value)}`,
+      // retry once so a momentary API error during a crawler scrape
+      // doesn't produce a page with no OG image
+      { retry: 1, retryDelay: 400 }
     ),
 
   {
@@ -103,7 +106,7 @@ const fightTitle = computed(() => {
 |
 */
 const pageUrl = computed(() => {
-  return `${requestUrl.origin}${route.fullPath}`
+  return `${origin}${route.fullPath}`
 })
 
 /*
@@ -111,29 +114,21 @@ const pageUrl = computed(() => {
 | OG Image
 |--------------------------------------------------------------------------
 |
-| IMPORTANT:
-|
-| We use ONLY thumbnail_link from the API.
-|
-| No og_image field.
-| No separate OG image.
-| No v168-og.png fallback.
+| thumbnail_link from the API is the share image. When a fight has no
+| thumbnail we still must emit an og:image — a page with no og:image at
+| all is exactly the "shared but no picture" case on Facebook/Telegram,
+| so the site logo is used as the last resort.
 |
 */
+const OG_FALLBACK_IMAGE = '/v168.png'
+
 const ogImage = computed(() => {
-  const thumbnail = fight.value?.thumbnail_link
-
-  if (!thumbnail) {
-    return undefined
-  }
-
   return toAbsoluteImageUrl(
-    thumbnail,
-    requestUrl.origin,
-    thumbnail
+    fight.value?.thumbnail_link,
+    origin,
+    `${origin}${OG_FALLBACK_IMAGE}`
   )
 })
-
 /*
 |--------------------------------------------------------------------------
 | SEO description
@@ -172,6 +167,11 @@ useSeoMeta({
    * thumbnail_link is used as og:image
    */
   ogImage: () => ogImage.value,
+
+  /*
+   * Facebook prefers the https variant explicitly.
+   */
+  ogImageSecureUrl: () => (ogImage.value.startsWith('https://') ? ogImage.value : undefined),
 
   /*
    * Recommended OG dimensions.

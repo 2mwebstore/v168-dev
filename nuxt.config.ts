@@ -20,12 +20,22 @@ export default defineNuxtConfig({
     ss24Username: '',
     ss24Password: '',
 
+    // Optional. Facebook app access token ("APP_ID|APP_SECRET") used by
+    // server/api/og-prewarm.post.ts to ask Facebook to (re)scrape a page
+    // before it's shared, so the first share already has its image.
+    // Set NUXT_FB_APP_TOKEN at deploy time. Leave empty to disable.
+    fbAppToken: '',
+
     public: {
       // Base URL for the cf88.me API — override with NUXT_PUBLIC_API_BASE at build/deploy time.
       apiBase: 'https://cf88.me/api',
       siteUrl: 'https://v168.example.com',
       telegramUrl: 'https://t.me/V_VDOVIP',
       telegramUsername: 'V_VDOVIP',
+      // Optional. Facebook App ID — enables the Messenger "Send Dialog" on
+      // desktop (NUXT_PUBLIC_FB_APP_ID). Mobile Messenger sharing works
+      // without it via the fb-messenger:// deep link.
+      fbAppId: '',
       // The ss24 socket.io endpoint the browser connects to directly once
       // it has a p_token from /api/live-token.
       liveSocketUrl: 'https://api.ss24.live',

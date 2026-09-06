@@ -1,7 +1,7 @@
 <script setup lang="ts">
 const route = useRoute()
 const config = useRuntimeConfig()
-const requestUrl = useRequestURL()
+const origin = useSiteOrigin()
 const { t } = useLang()
 
 const id = computed(() => route.params.id as string)
@@ -19,7 +19,12 @@ interface VideoDetail {
 
 const { data: item, error } = await useAsyncData(
   () => `video-${id.value}`,
-  () => $fetch<VideoDetail | VideoDetail[] | { data: VideoDetail }>(`${config.public.apiBase}/channel/${encodeURIComponent(id.value)}`),
+  // retry once: if the API hiccups while Facebook/Telegram's crawler is
+  // scraping this page, the SSR HTML would otherwise ship with no OG image.
+  () => $fetch<VideoDetail | VideoDetail[] | { data: VideoDetail }>(
+    `${config.public.apiBase}/channel/${encodeURIComponent(id.value)}`,
+    { retry: 1, retryDelay: 400 }
+  ),
   { watch: [id] }
 )
 
@@ -35,17 +40,34 @@ const video = computed<VideoDetail | null>(() => {
 // config value — production serves both v168.me and v168.shop live, so
 // this has to resolve to whichever domain the visitor (and Facebook's
 // crawler) actually hit, or og:url/the share link won't match the page.
-const pageUrl = computed(() => `${requestUrl.origin}${route.fullPath}`)
+const pageUrl = computed(() => `${origin}${route.fullPath}`)
+
+const ogImage = computed(() => toAbsoluteImageUrl(video.value?.photo, origin, `${origin}/v168.png`))
+const ogDescription = computed(() => video.value?.detail || 'Watch this V168 fight video.')
 
 useSeoMeta({
   title: () => (video.value ? `${video.value.title} — V168` : 'V168 — Video'),
-  description: () => video.value?.detail || 'Watch this V168 fight video.',
+  description: () => ogDescription.value,
   ogTitle: () => video.value?.title || 'V168 — Video',
-  ogDescription: () => video.value?.detail || 'Watch this V168 fight video.',
-  ogImage: () => toAbsoluteImageUrl(video.value?.photo, requestUrl.origin, `${requestUrl.origin}/v168.png`),
-  ogType: 'video.other',
+  ogDescription: () => ogDescription.value,
+  // 'website' rather than 'video.other': Facebook expects og:video:* tags
+  // alongside a video.* type and can drop the image preview when they're
+  // missing. We only have a poster image to offer, so describe it as a page.
+  ogType: 'website',
   ogUrl: () => pageUrl.value,
+  ogImage: () => ogImage.value,
+  // secure_url + width/height are what let Facebook render the picture on
+  // the *first* share instead of the blank "no image yet" card — without
+  // the dimensions it fetches the image asynchronously and the first
+  // scrape ships without it.
+  ogImageSecureUrl: () => (ogImage.value.startsWith('https://') ? ogImage.value : undefined),
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
+  ogImageAlt: () => video.value?.title || 'V168',
   twitterCard: 'summary_large_image',
+  twitterTitle: () => video.value?.title || 'V168 — Video',
+  twitterDescription: () => ogDescription.value,
+  twitterImage: () => ogImage.value,
 })
 </script>
 

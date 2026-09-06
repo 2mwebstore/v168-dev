@@ -48,16 +48,47 @@ export function timeAgo(str?: string | null): string {
 // qualified, absolute URL — it will not resolve a relative path against
 // the page it's scraping. Admin-entered image links (video `photo`,
 // fight `thumbnail_link`) are free-text fields, so there's no guarantee
-// they were saved as absolute URLs. This normalizes whatever comes back
-// from the API into something Facebook can actually fetch:
+// they were saved as absolute URLs, or that they don't contain spaces /
+// non-ASCII characters (Khmer file names, "my photo.jpg", etc). A raw
+// space or Khmer character inside <meta property="og:image"> is enough
+// for Facebook's and Telegram's crawlers to fail the image fetch, which
+// shows up as "shared, but no picture". This normalizes whatever comes
+// back from the API into something the crawlers can actually fetch:
 //   - already absolute (http/https) → used as-is
-//   - protocol-relative ("//cdn...") → given the current scheme
+//   - protocol-relative ("//cdn...") → given https
 //   - site-relative ("/uploads/x.jpg") → prefixed with the request origin
 //   - empty/missing → falls back to the provided default
+//   - always percent-encoded (idempotent — already-encoded URLs stay as-is)
 export function toAbsoluteImageUrl(path: string | null | undefined, origin: string, fallback: string): string {
   const value = path?.trim()
   if (!value) return fallback
-  if (/^https?:\/\//i.test(value)) return value
-  if (value.startsWith('//')) return `https:${value}`
-  return `${origin}${value.startsWith('/') ? '' : '/'}${value}`
+  let abs: string
+  if (/^https?:\/\//i.test(value)) abs = value
+  else if (value.startsWith('//')) abs = `https:${value}`
+  else abs = `${origin}${value.startsWith('/') ? '' : '/'}${value}`
+  return encodeImageUrl(abs)
+}
+
+function encodeImageUrl(url: string): string {
+  try {
+    // decode first so an already-encoded URL isn't double-encoded (%20 → %2520)
+    return encodeURI(decodeURI(url))
+  } catch {
+    return encodeURI(url)
+  }
+}
+
+// The origin (scheme + host) of the page as the visitor / crawler actually
+// requested it. Production serves several domains from one Nuxt instance
+// behind Nginx, so this must come from the request — not a fixed config
+// value. Plain useRequestURL() ignores X-Forwarded-Host / X-Forwarded-Proto,
+// which behind a reverse proxy yields "http://..." (or the upstream host)
+// during SSR; og:url / og:image would then point at a URL the crawler can't
+// or won't use. Requires Nginx to send:
+//   proxy_set_header Host $host;
+//   proxy_set_header X-Forwarded-Host $host;
+//   proxy_set_header X-Forwarded-Proto $scheme;
+export function useSiteOrigin() {
+  const requestUrl = useRequestURL({ xForwardedHost: true, xForwardedProto: true })
+  return requestUrl.origin
 }

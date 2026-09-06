@@ -1,30 +1,24 @@
 <script setup lang="ts">
 const { open, url, title, closeShareSheet } = useShareSheet()
 const { t } = useLang()
+const config = useRuntimeConfig()
 
 const copied = ref(false)
 
-function close() {
-  closeShareSheet()
-  copied.value = false
-}
-
-const telegramShareUrl = computed(() => {
-  const params = new URLSearchParams({ url: url.value, text: title.value })
-  return `https://t.me/share/url?${params.toString()}`
+// Ask Facebook to scrape the page as soon as the sheet opens (before the
+// user has even picked Facebook/Messenger). Facebook's first scrape of a
+// never-shared URL fetches the image asynchronously, so the first share
+// often shows no picture; pre-scraping means the image is already cached
+// by the time the share dialog renders. No-op unless NUXT_FB_APP_TOKEN is
+// set on the server — see server/api/og-prewarm.post.ts.
+watch(open, (isOpen) => {
+  if (!isOpen || !url.value) return
+  $fetch('/api/og-prewarm', { method: 'POST', body: { url: url.value } }).catch(() => {})
 })
 
-// t.me/share/url always opens Telegram's web share page first. Try the
-// native tg:// deep link (which opens the app's own share/forward sheet
-// directly) and only fall back to the web share URL if the app doesn't
-// actually take over (desktop, app not installed, etc).
-function onTelegramClick(e: MouseEvent) {
-  e.preventDefault()
-
-  const params = new URLSearchParams({ url: url.value, text: title.value })
-  const deepLink = `tg://msg_url?${params.toString()}`
-  const webUrl = telegramShareUrl.value
-
+// Generic "try the native app deep link, fall back to a web URL if the
+// app didn't take over" — used by both Telegram and Messenger.
+function openDeepLinkWithFallback(deepLink: string, webUrl: string) {
   const start = Date.now()
   let fellBack = false
 
@@ -49,6 +43,26 @@ function onTelegramClick(e: MouseEvent) {
   document.addEventListener('visibilitychange', onVisibilityChange)
 
   window.location.href = deepLink
+}
+
+function close() {
+  closeShareSheet()
+  copied.value = false
+}
+
+const telegramShareUrl = computed(() => {
+  const params = new URLSearchParams({ url: url.value, text: title.value })
+  return `https://t.me/share/url?${params.toString()}`
+})
+
+// t.me/share/url always opens Telegram's web share page first. Try the
+// native tg:// deep link (which opens the app's own share/forward sheet
+// directly) and only fall back to the web share URL if the app doesn't
+// actually take over (desktop, app not installed, etc).
+function onTelegramClick(e: MouseEvent) {
+  e.preventDefault()
+  const params = new URLSearchParams({ url: url.value, text: title.value })
+  openDeepLinkWithFallback(`tg://msg_url?${params.toString()}`, telegramShareUrl.value)
   close()
 }
 
@@ -56,6 +70,36 @@ const facebookShareUrl = computed(() => {
   const params = new URLSearchParams({ u: url.value })
   return `https://www.facebook.com/sharer/sharer.php?${params.toString()}`
 })
+
+// Messenger. On phones the fb-messenger:// deep link opens the Messenger
+// app's own "send to" sheet and needs no app id. On desktop the only web
+// entry point is Facebook's Send Dialog, which requires a Facebook App ID
+// (NUXT_PUBLIC_FB_APP_ID). Without one, desktop falls back to the normal
+// Facebook share dialog so the button still does something useful.
+const fbAppId = computed(() => (config.public.fbAppId as string) || '')
+
+const messengerWebUrl = computed(() => {
+  if (!fbAppId.value) return facebookShareUrl.value
+  const params = new URLSearchParams({
+    link: url.value,
+    app_id: fbAppId.value,
+    redirect_uri: url.value,
+  })
+  return `https://www.facebook.com/dialog/send?${params.toString()}`
+})
+
+function onMessengerClick(e: MouseEvent) {
+  e.preventDefault()
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+  if (isMobile) {
+    const params = new URLSearchParams({ link: url.value })
+    if (fbAppId.value) params.set('app_id', fbAppId.value)
+    openDeepLinkWithFallback(`fb-messenger://share?${params.toString()}`, messengerWebUrl.value)
+  } else {
+    window.open(messengerWebUrl.value, '_blank', 'noopener,noreferrer')
+  }
+  close()
+}
 
 async function copyLink() {
   try {
@@ -119,6 +163,18 @@ onMounted(() => {
               </svg>
             </span>
             <span>Facebook</span>
+          </a>
+
+          <a :href="messengerWebUrl" target="_blank" rel="noopener noreferrer" class="share-option" @click="onMessengerClick">
+            <span class="share-option-icon messenger">
+              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path
+                  fill="currentColor"
+                  d="M12 2C6.36 2 2 6.13 2 11.7c0 2.91 1.19 5.44 3.14 7.17.16.14.26.35.27.57l.05 1.78c.02.57.6.94 1.12.71l1.98-.87c.17-.08.36-.09.54-.04.91.25 1.88.38 2.9.38 5.64 0 10-4.13 10-9.7S17.64 2 12 2zm6 7.46l-2.94 4.66c-.47.74-1.47.93-2.17.4l-2.34-1.75a.6.6 0 0 0-.72 0l-3.16 2.4c-.42.32-.97-.18-.69-.63l2.94-4.66c.47-.74 1.47-.93 2.17-.4l2.34 1.75c.21.16.5.16.72 0l3.16-2.4c.42-.32.97.18.69.63z"
+                />
+              </svg>
+            </span>
+            <span>Messenger</span>
           </a>
 
           <button type="button" class="share-option" @click="copyLink">

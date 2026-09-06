@@ -1,0 +1,20 @@
+{
+  "name": "v168",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "hls.js": "^1.5.17",
+    "socket.io-client": "^4.8.1"
+  },
+  "devDependencies": {
+    "@nuxtjs/tailwindcss": "^6.12.0",
+    "nuxt": "^3.13.0"
+  }
+}

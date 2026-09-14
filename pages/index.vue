@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const requestUrl = useRequestURL()
+const origin = useSiteOrigin()
 const { t } = useLang()
 
 const DEFAULT_LEFT_IMAGE = '/images/left.png'
@@ -13,7 +13,7 @@ useSeoMeta({
   ogTitle: 'V168 — Live',
   ogDescription:
     'Watch V168 live cockfight streaming, vote Meron vs Wala, and follow the current active fight in real time.',
-  ogImage: `${requestUrl.origin}/v168.png`,
+  ogImage: `${origin}/v168.png`,
   ogType: 'website',
   twitterCard: 'summary_large_image',
 })

@@ -29,7 +29,6 @@ export default defineNuxtConfig({
     public: {
       // Base URL for the cf88.me API — override with NUXT_PUBLIC_API_BASE at build/deploy time.
       apiBase: 'https://cf88.me/api',
-      siteUrl: 'https://v168.example.com',
       telegramUrl: 'https://t.me/V_VDOVIP',
       telegramUsername: 'V_VDOVIP',
       // Optional. Facebook App ID — enables the Messenger "Send Dialog" on

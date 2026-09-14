@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const config = useRuntimeConfig()
-const requestUrl = useRequestURL()
+const origin = useSiteOrigin()
 const { t } = useLang()
 
 useSeoMeta({
@@ -183,7 +183,7 @@ const { openFighterModal } = useFighterModal()
               </div>
             </div>
 
-            <ShareIconButton :url="`${requestUrl.origin}/fights/${f.id}`" :title="`${f.red_fighter} vs ${f.blue_fighter}`" />
+            <ShareIconButton :url="`${origin}/fights/${f.id}`" :title="`${f.red_fighter} vs ${f.blue_fighter}`" />
           </NuxtLink>
         </div>
 

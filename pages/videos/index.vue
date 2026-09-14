@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const config = useRuntimeConfig()
-const requestUrl = useRequestURL()
+const origin = useSiteOrigin()
 const { t } = useLang()
 
 useSeoMeta({
@@ -145,7 +145,7 @@ onUnmounted(() => observer?.disconnect())
                   <span class="meta-dot"></span>
                   <span class="video-time">{{ timeAgo(v.created_at || v.date) }}</span>
                 </div>
-                <ShareIconButton :url="`${requestUrl.origin}/videos/${v.id}`" :title="v.title" />
+                <ShareIconButton :url="`${origin}/videos/${v.id}`" :title="v.title" />
               </div>
             </NuxtLink>
           </template>

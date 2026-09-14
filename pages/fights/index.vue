@@ -182,8 +182,9 @@ const { openFighterModal } = useFighterModal()
                 <div class="fighter-name text-xs sm:text-sm">{{ f.blue_fighter }}</div>
               </div>
             </div>
-
-            <ShareIconButton :url="`${origin}/fights/${f.id}`" :title="`${f.red_fighter} vs ${f.blue_fighter}`" />
+            <div class="fight-header c-share">
+              <ShareIconButton :url="`${origin}/fights/${f.id}`" :title="`${f.red_fighter} vs ${f.blue_fighter}`" />
+            </div>
           </NuxtLink>
         </div>
 
